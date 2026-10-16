@@ -1,60 +1,47 @@
-#include <vector>
-#include <array>
-#include <cmath>
+#include "kmeans.hpp"
+#include <limits>
+#include <random>
+
 using namespace std;
-vector<vector<std::array<double, 2>>> kmeans(vector<std::array<double, 2>> &points, int k, int max_iterations) {
-    vector<std::array<double, 2>> centroids(k);
-    for (int i = 0; i < k; ++i) {
-        centroids[i] = points[i];
+
+float squared_distance(const vector<float>& a, const vector<float>& b) {
+    float dist = 0.0f;
+    // TODO: Implement squared Euclidean distance calculation here
+    return dist;
+}
+
+vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max_iterations) {
+    vector<vector<float>> centroids(k);
+
+    // Edge case: if k > number of points, just return the points
+    if (points.size() <= static_cast<size_t>(k)) {
+        return points;
     }
-    vector<vector<std::array<double, 2>>> clusters(k);
+
+    // TODO: Phase 1: Initialization
+    // Pick K random vectors from 'points' and assign them to 'centroids'.
+
+    // This array will hold the index of the centroid that each point is assigned to.
+    vector<int> assignments(points.size(), -1);
+
     for (int iteration = 0; iteration < max_iterations; ++iteration) {
-        for (auto &cluster : clusters) {
-            cluster.clear();
-        }
-        for (const auto &point : points) {
-            double min_distance = std::numeric_limits<double>::max();
-            int closest_centroid_index = -1;
-            for (int i = 0; i < k; ++i) {
-                double distance = std::sqrt(std::pow(point[0] - centroids[i][0], 2) + std::pow(point[1] - centroids[i][1], 2));
-                if (distance < min_distance) {
-                    min_distance = distance;
-                    closest_centroid_index = i;
-                }
-            }
-            clusters[closest_centroid_index].push_back(point);
-        }
-        for (int i = 0; i < k; ++i) {
-            if (!clusters[i].empty()) {
-                double sum_x = 0;
-                double sum_y = 0;
-                for (const auto &point : clusters[i]) {
-                    sum_x += point[0];
-                    sum_y += point[1];
-                }
-                centroids[i][0] = sum_x / clusters[i].size();
-                centroids[i][1] = sum_y / clusters[i].size();
-            }
-        }
+
+        bool changed = false;
+
+        // TODO: Phase 2: Expectation (Assignment Step)
+        // For every point in 'points', find the closest centroid using squared_distance.
+        // Update 'assignments[i]'. If the assignment changes, set changed = true.
+
+
+        // If no points changed clusters, we have converged! Break early.
+        // if (!changed) break;
+
+
+        // TODO: Phase 3: Maximization (Update Step)
+        // Calculate the new means for each centroid.
+        // You'll need temporary vectors to sum the dimensions and an array to count the items per cluster.
+
     }
-    return clusters;
-}
-vector<std::array<double, 2>> initcentroids(int num_points, double min_x, double max_x, double min_y, double max_y) {
-    
-}
-double goal(vector<vector<std::array<double, 2>>> &clusters, vector<std::array<double, 2>> &centroids) {
-    double loss = 0;
-    for (const auto &cluster : clusters) {
-        for (const auto &point : cluster) {
-            double min_distance = std::numeric_limits<double>::max();
-            for (const auto &centroid : centroids) {
-                double distance = std::sqrt(std::pow(point[0] - centroid[0], 2) + std::pow(point[1] - centroid[1], 2));
-                if (distance < min_distance) {
-                    min_distance = distance;
-                }
-            }
-            loss += min_distance;
-        }
-    }
-    return loss;
+
+    return centroids;
 }
