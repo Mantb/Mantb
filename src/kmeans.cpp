@@ -40,7 +40,7 @@ vector<vector<std::array<double, 2>>> kmeans(vector<std::array<double, 2>> &poin
     return clusters;
 }
 vector<std::array<double, 2>> initcentroids(int num_points, double min_x, double max_x, double min_y, double max_y) {
-
+    
 }
 double goal(vector<vector<std::array<double, 2>>> &clusters, vector<std::array<double, 2>> &centroids) {
     double loss = 0;

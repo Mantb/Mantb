@@ -4,3 +4,6 @@ bin/
 *.a
 *.so
 .DS_Store
+#the dataset too big so we ignore it
+
+/dataset/
