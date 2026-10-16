@@ -5,7 +5,7 @@
 #include <cmath>
 using namespace std;
 
-//extract(-flag <value>) pairs from command line 
+//extract(-flag <value>) pairs from command line
 map<string,string> tokenize(int argc, char** argv){
     map<string,string> tokens;
 
@@ -31,7 +31,7 @@ map<string,string> tokenize(int argc, char** argv){
     return tokens;
 }
 
-//Helper functions 
+//Helper functions
 //converts Method enum to string
 const char* method_name(Method m){
     switch(m){
@@ -52,7 +52,7 @@ int to_int(const std::string& flag,const string& s){
         //starts parsting from position 0
         num = stoi(s,&pos);
     }catch(const exception&){
-        pos = 0;  
+        pos = 0;
     }
     //check if nothing was read or part of the string was not read
     if(pos == 0 || pos != s.size()){
@@ -68,7 +68,7 @@ double to_double(const std::string& flag,const string& s){
     try{
         num = stod(s,&pos);
     }catch(const exception&){
-        pos = 0;  
+        pos = 0;
     }
 
     if(pos == 0 || pos != s.size()){
@@ -81,13 +81,13 @@ Args parse_args(int argc, char** argv){
     Args args;
     map<string,string> tokens = tokenize(argc,argv);
 
-    //check if all flags are present and have values 
+    //check if all flags are present and have values
     for(const char* flag : {"-hp", "-mir", "-split", "-vocab", "-D", "-set", "-o"}){
         auto it = tokens.find(flag);
         if(it == tokens.end() || it->second.empty())
             throw runtime_error(string("missing required option ") + flag);
     }
-    
+
     //parse flags
     for(auto& [flag,value]:tokens){
         if(flag == "-hp") args.hp = value;
@@ -122,7 +122,7 @@ Args parse_args(int argc, char** argv){
     if(args.kclusters == 0){
         args.kclusters = (int)ceil((double)n);
     }
-    
+
     //M default depends on the method, so it can only be set after the loop
     if(args.M == 0) args.M = (args.method == Method::IVFPQ) ? 16 : 500;
 

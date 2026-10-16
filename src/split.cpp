@@ -8,7 +8,7 @@
 using namespace std;
 
 //split data into train,validation or test
-Split load_split(string& path){
+Split load_split(const string& path){
     //open file
     ifstream in(path);
     if(!in){
@@ -22,7 +22,7 @@ Split load_split(string& path){
     //parse lines
     while(getline(in,line)){
         ++linenum;
-        
+
         //check lines arguments (example name = "v_bird",settype="validation" )
         string name,settype;
         istringstream fields(line);

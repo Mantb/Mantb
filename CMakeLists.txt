@@ -21,8 +21,11 @@ include_directories(
 # Source files
 set(SOURCES
     src/main.cpp
-    src/image_utils.cpp
-    src/search_index.cpp
+    src/imgutils.cpp
+    src/args.cpp
+    src/split.cpp
+    src/loader.cpp
+    src/kmeans.cpp
     src/lsh.cpp
     src/hypercube.cpp
     src/ivf.cpp
