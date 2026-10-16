@@ -1,4 +1,6 @@
-#include "search.hpp"
+#include <vector>
+#include <array>
+#include <cmath>
 using namespace std;
 vector<vector<std::array<double, 2>>> kmeans(vector<std::array<double, 2>> &points, int k, int max_iterations) {
     vector<std::array<double, 2>> centroids(k);
