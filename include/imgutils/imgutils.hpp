@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 
+// Helper function to calculate squared Euclidean distance between two vectors.
+float squared_distance(const std::vector<float>& a, const std::vector<float>& b);
+
 // Extracts up to max_features SIFT descriptors from an image.
 // Returns a matrix (vector of vectors) where each inner vector is a 128D float vector.
 std::vector<std::vector<float>> extract_sift_descriptors(const std::string& image_path, int max_features = 500);

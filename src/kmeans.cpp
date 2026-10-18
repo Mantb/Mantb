@@ -1,18 +1,9 @@
 #include "kmeans.hpp"
+#include "imgutils/imgutils.hpp"
 #include <limits>
 #include <random>
 
 using namespace std;
-
-float squared_distance(const vector<float>& a, const vector<float>& b) {
-    float dist = 0.0f;
-    for (size_t i = 0; i < a.size(); ++i) {
-        float diff = a[i] - b[i];
-        dist += diff * diff;
-    }
-    return dist;
-    //cause we have 128 dimensions 
-}
 
 vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max_iterations) {
     vector<vector<float>> centroids(k);
