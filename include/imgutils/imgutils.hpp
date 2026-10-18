@@ -11,4 +11,4 @@ std::vector<std::vector<float>> extract_sift_descriptors(const std::string& imag
 // computes the normalized Bag of Visual Words (BoVW) histogram.
 std::vector<float> compute_bovw_histogram(const std::vector<std::vector<float>>& image_descriptors,
                                           const std::vector<std::vector<float>>& vocabulary);
-#endif imgutils_hpp
+#endif // imgutils_hpp
