@@ -1,6 +1,9 @@
 #pragma once
-#include <vector>
 #include <string>
+#include <vector>
+#include <cctype>
+#include <iostream>
+#include <filesystem>
 
 struct Image{
     std::string id;

@@ -6,8 +6,12 @@ using namespace std;
 
 float squared_distance(const vector<float>& a, const vector<float>& b) {
     float dist = 0.0f;
-    // TODO: Implement squared Euclidean distance calculation here
+    for (size_t i = 0; i < a.size(); ++i) {
+        float diff = a[i] - b[i];
+        dist += diff * diff;
+    }
     return dist;
+    //cause we have 128 dimensions
 }
 
 vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max_iterations) {
@@ -20,7 +24,12 @@ vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max
 
     // TODO: Phase 1: Initialization
     // Pick K random vectors from 'points' and assign them to 'centroids'.
-
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, points.size() - 1);
+    for (int i = 0; i < k; ++i) {
+        centroids[i] = points[dis(gen)];
+    }
     // This array will hold the index of the centroid that each point is assigned to.
     vector<int> assignments(points.size(), -1);
 

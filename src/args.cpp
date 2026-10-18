@@ -1,8 +1,4 @@
 #include "args.hpp"
-#include <map>
-#include <iostream>
-#include <stdexcept>
-#include <cmath>
 using namespace std;
 
 //extract(-flag <value>) pairs from command line

@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
-
+#include <map>
+#include <iostream>
+#include <stdexcept>
+#include <cmath>
 enum class Method{
     Exact,
     LSH,
