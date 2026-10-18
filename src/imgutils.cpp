@@ -13,7 +13,25 @@ vector<vector<float>> extract_sift_descriptors(const string& image_path, int max
     // 3. Detect and compute keypoints and descriptors
     // 4. Sample a maximum of 'max_features' descriptors (e.g., take the first N, or randomly shuffle)
     // 5. Convert the cv::Mat rows into std::vector<float> and push to descriptors_vec
-
+    cv::Mat image = cv::imread(image_path, cv::IMREAD_GRAYSCALE);
+    if (image.empty()) {
+        throw std::runtime_error("Could not open or find the image: " + image_path);
+    }
+    cv::Ptr<cv::SIFT> sift = cv::SIFT::create();
+    vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    sift->detectAndCompute(image, cv::noArray(), keypoints, descriptors);
+    vector<vector<float>> descriptors_vec;
+    cv::Mat shuffled_descriptors;
+    std::shuffle(descriptors, shuffled_descriptors);
+    descriptors_vec.reserve(min(max_features, shuffled_descriptors.rows));
+    for (int i = 0; i < max_features && i < shuffled_descriptors.rows; ++i) {
+        vector<float> descriptor_row(shuffled_descriptors.cols);
+        for (int j = 0; j < shuffled_descriptors.cols; ++j) {
+            descriptor_row[j] = shuffled_descriptors.at<float>(i, j);
+        }
+        descriptors_vec.push_back(descriptor_row);
+    }
     return descriptors_vec;
 }
 
