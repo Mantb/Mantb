@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <algorithm>
+#include <cmath>
 
 // Structure to hold search results
 struct SearchResult {
