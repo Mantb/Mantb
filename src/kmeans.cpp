@@ -1,4 +1,4 @@
-#include "ivf.hpp"
+#include "kmeans.hpp"
 #include <limits>
 #include <random>
 
@@ -6,9 +6,12 @@ using namespace std;
 
 float squared_distance(const vector<float>& a, const vector<float>& b) {
     float dist = 0.0f;
-    // TODO: Implement squared Euclidean distance calculation here
-    dist=(float)sqrt(pow(a[0]-b[0],2)+pow(a[1]-b[1],2));
+    for (size_t i = 0; i < a.size(); ++i) {
+        float diff = a[i] - b[i];
+        dist += diff * diff;
+    }
     return dist;
+    //cause we have 128 dimensions 
 }
 
 vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max_iterations) {
@@ -60,16 +63,14 @@ vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max
         const static int sift_dim=k;
         std::vector<std::vector<float>> sum_centroids(k);
         std::vector<int> count_centroids(sift_dim, 0);
-        for(id_t i = 0; i < points.size(); ++i) {
-            int cluster_id = assignments[i];
-            if(cluster_id >= 0) {
-                if(sum_centroids[cluster_id].empty()) {
-                    sum_centroids[cluster_id] = std::vector<float>(points[i].size(), 0.0f);
+        for (int j = 0; j < k; ++j) {
+            if (count_centroids[j] > 0) {
+                for (size_t d = 0; d < centroids[j].size(); ++d) {
+                    centroids[j][d] = sum_centroids[j][d] / count_centroids[j];
                 }
-                for(size_t d = 0; d < points[i].size(); ++d) {
-                    sum_centroids[cluster_id][d] += points[i][d];
-                }
-                count_centroids[cluster_id]++;
+            } else {
+                // Re-initialize empty clusters to a random point
+                centroids[j] = points[dis(gen)];
             }
         }
        

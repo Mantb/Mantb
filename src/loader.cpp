@@ -1,8 +1,4 @@
 #include "loader.hpp"
-#include <vector>
-#include <cctype>
-#include <iostream>
-#include <filesystem>
 using namespace std;
 
 //load dataset from directory
