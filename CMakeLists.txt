@@ -26,6 +26,7 @@ set(SOURCES
     src/split.cpp
     src/loader.cpp
     src/kmeans.cpp
+    src/search.cpp
     src/lsh.cpp
     src/hypercube.cpp
     src/ivf.cpp

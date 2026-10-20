@@ -1,4 +1,4 @@
-#include "imgutils.hpp"
+#include "imgutils/imgutils.hpp"
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 
@@ -21,7 +21,7 @@ vector<vector<float>> extract_sift_descriptors(const string& image_path, int max
     vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
     sift->detectAndCompute(image, cv::noArray(), keypoints, descriptors);
-    vector<vector<float>> descriptors_vec;
+
     descriptors_vec.reserve(min(max_features, descriptors.rows));
     for (int i = 0; i < max_features && i < descriptors.rows; ++i) {
         vector<float> descriptor_row(descriptors.cols);
