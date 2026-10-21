@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "imgutils/search.hpp"
 
 using namespace std;
@@ -64,6 +65,6 @@ float calculate_ap(const vector<SearchResult>& results, const vector<string>& gr
             relevant_found++;
             precision_sum += static_cast<float>(relevant_found) / static_cast<float>(i + 1);
         }
-    }   
+    }
     return ground_truth.empty() ? 0.0f : precision_sum / static_cast<float>(ground_truth.size());
 }
