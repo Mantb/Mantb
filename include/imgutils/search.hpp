@@ -2,7 +2,8 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include <unordered_map>
+#include <algorithm>
+#include <cmath>
 
 // Structure to hold search results
 struct SearchResult {

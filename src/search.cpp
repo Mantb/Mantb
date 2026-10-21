@@ -20,11 +20,10 @@ vector<SearchResult> ExactSearch::search(const vector<float>& query, int top_k) 
     // 3. Store the (distance, image_id) pair.
     // 4. Sort all pairs by distance in ascending order.
     // 5. Return the first `top_k` results.
-    for (size_t i = 0; i < dataset_.size(); ++i) {
+    for (id_t  i = 0; i < dataset_.size(); ++i) {
         float distance = 0.0f;
         for (size_t j = 0; j < query.size(); ++j) {
-            float diff = query[j] - dataset_[i][j];
-            distance += diff * diff;
+            float diff = abs(query[j] - dataset_[i][j]);// no need to chekc the squrt (optimization)
         }
         results.push_back({image_ids_[i], distance});
     }
