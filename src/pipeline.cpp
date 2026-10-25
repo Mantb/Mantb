@@ -13,10 +13,14 @@ vector<vector<float>> build_vocabulary(const vector<Image>& train_images, int k_
     // 1. Loop over every image in `train_images`.
     // 2. Call `extract_sift_descriptors(image.path, max_sift_features)`.
     // 3. Append the returned descriptors to `all_descriptors`.
+    for (const auto& image : train_images) {
+        vector<vector<float>> descriptors = extract_sift_descriptors(image.path, max_sift_features);
+        all_descriptors.insert(all_descriptors.end(), descriptors.begin(), descriptors.end());
+    }
 
     cout << "Running K-Means to cluster " << all_descriptors.size() << " descriptors into " << k_vocab << " visual words." << endl;
     // 4. Return the result of `kmeans(all_descriptors, k_vocab)`
-    return {};
+    return kmeans(all_descriptors, k_vocab);
 }
 
 vector<vector<float>> compute_dataset_bovw(const vector<Image>& images, const vector<vector<float>>& vocabulary, int max_features) {
@@ -26,6 +30,11 @@ vector<vector<float>> compute_dataset_bovw(const vector<Image>& images, const ve
     // 2. Extract SIFT descriptors for the image (use max_features or a high number so you don't artificially cap test queries).
     // 3. Call `compute_bovw_histogram(descriptors, vocabulary)`.
     // 4. Append the histogram to `bovw_dataset`.
+    for (const auto& image : images) {
+        vector<vector<float>> descriptors = extract_sift_descriptors(image.path, max_features);
+        vector<float> histogram = compute_bovw_histogram(descriptors, vocabulary);
+        bovw_dataset.push_back(histogram);
+    }
     return bovw_dataset;
 }
 
@@ -52,4 +61,19 @@ void evaluate_queries(SearchMethod* searcher, const vector<Image>& query_images,
     // 3. Calculate `Recall@10` and `AP` using the functions in `search.hpp`.
     // 4. Accumulate the totals.
     // 5. Print the average Recall (total_recall / num_queries) and Mean Average Precision (mAP = total_ap / num_queries).
+    for (int i = 0; i < num_queries; ++i) {
+        vector<SearchResult> results = searcher->search(query_bovw[i], 10);
+        total_recall += calculate_recall(results, ground_truth[i]);
+        total_ap += calculate_ap(results, ground_truth[i]);
+    }
+
+    if (num_queries > 0) {
+        float avg_recall = total_recall / num_queries;
+        float map = total_ap / num_queries;
+        cout << "Evaluation Results over " << num_queries << " queries:" << endl;
+        cout << "Average Recall@10: " << avg_recall << endl;
+        cout << "Mean Average Precision (mAP@10): " << map << endl;
+    } else {
+        cout << "No queries to evaluate." << endl;
+    }
 }
