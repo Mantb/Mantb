@@ -53,17 +53,18 @@ vector<float> compute_bovw_histogram(const vector<vector<float>>& image_descript
     // 2. Find the index of the closest centroid in 'vocabulary'
     // 3. Increment histogram[index]
     // 4. Normalize the histogram (divide all elements by the total number of descriptors
-    for(int i=0;i<image_descriptors.size();++i){
-        int j=0;
-        bool flag=0;
-        for(j=0;j<vocabulary.size();++j){
-            if(image_descriptors[i]==vocabulary[j]){
-                flag=1;
-                break;
+    for(size_t i=0; i<image_descriptors.size(); ++i){
+        int closest_centroid = -1;
+        float min_dist = std::numeric_limits<float>::max();
+        for(size_t j=0; j<vocabulary.size(); ++j){
+            float dist = squared_distance(image_descriptors[i], vocabulary[j]);
+            if(dist < min_dist){
+                min_dist = dist;
+                closest_centroid = (int)j;
             }
         }
-        if(flag==1){
-            histogram[j]++;
+        if(closest_centroid != -1){
+            histogram[closest_centroid]++;
         }
     }
     // Normalize the histogram
