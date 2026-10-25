@@ -2,8 +2,10 @@
 #include "loader.hpp"
 #include "imgutils/pipeline.hpp"
 #include "imgutils/search.hpp"
+#include "imgutils/split.hpp"
 #include <iostream>
-
+#define DATASETPATH "dataset/MIRFLICKR-1M"
+#define SPLITPATH "dataset/splits.txt"
 using namespace std;
 
 int main(int argc, char* argv[]) {
@@ -21,24 +23,25 @@ int main(int argc, char* argv[]) {
         // TODO: Tie the Pipeline Together!
 
         // 2. Load Datasets using `load_split` and `load_dataset` (from loader.hpp/split.hpp)
-
+        load_split(args.split);
+        load_dataset(args.hp, args.mir, args.D, args.train_split, args.test_split, args.query_split);
         // 3. Build Vocabulary
-        // vector<vector<float>> vocab = build_vocabulary(train_images, args.vocab, args.S);
+        vector<vector<float>> vocab = build_vocabulary(train_images, args.vocab, args.S);
 
         // 4. Compute BoVW
-        // vector<vector<float>> database_bovw = compute_dataset_bovw(database_images, vocab, 500);
-        // vector<vector<float>> query_bovw = compute_dataset_bovw(query_images, vocab, 10000); // queries shouldn't be capped!
+        vector<vector<float>> database_bovw = compute_dataset_bovw(database_images, vocab, 500);
+        vector<vector<float>> query_bovw = compute_dataset_bovw(query_images, vocab, 10000); // queries shouldn't be capped!
 
         // 5. Initialize Search Method
-        // SearchMethod* searcher = initialize_search_method(args);
+        SearchMethod* searcher = initialize_search_method(args);
 
         // 6. Build the Index (LSH, Hypercube, IVF, or Exact)
-        // searcher->build_index(database_bovw, database_image_ids);
+        searcher->build_index(database_bovw, database_image_ids);
 
         // 7. Evaluate
-        // evaluate_queries(searcher, query_images, query_bovw, ground_truth);
+        evaluate_queries(searcher, query_images, query_bovw, ground_truth);
 
-        // delete searcher;
+        delete searcher;
 
     } catch (const exception& e) {
         cerr << "Error: " << e.what() << endl;

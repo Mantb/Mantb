@@ -94,7 +94,7 @@ public:
 };
 // Evaluation Metrics
 // Calculate Recall@K given the retrieved results and the ground truth relevant images
-float calculate_recall(const std::vector<SearchResult>& results, const std::vector<std::string>& ground_truth);
+float calculate_recall(const std::vector<SearchResult>& results, const std::vector<std::string>& ground_truth, int k);
 
 // Calculate Average Precision (AP@K) given the retrieved results and the ground truth relevant images
-float calculate_ap(const std::vector<SearchResult>& results, const std::vector<std::string>& ground_truth);
+float calculate_ap(const std::vector<SearchResult>& results, const std::vector<std::string>& ground_truth, int k);
