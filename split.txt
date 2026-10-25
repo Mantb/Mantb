@@ -1,0 +1,3 @@
+i_ajuntament validation
+v_bird train
+i_bologna test
