@@ -1,6 +1,6 @@
-#include "imgutils/search.hpp"
-#include "imgutils/imgutils.hpp"
-#include "kmeans.hpp"
+#include "include/imgutils/search.hpp"
+#include "include/imgutils/imgutils.hpp"
+#include "include/kmeans.hpp"
 
 using namespace std;
 
