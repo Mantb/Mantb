@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <algorithm>
 #include <cmath>
@@ -44,6 +45,7 @@ private:
     int k_; // Number of hash functions per table
     float w_; // Width of the hash bins
     std::vector<std::vector<std::vector<float>>> hash_tables_; // L hash tables
+    std::vector<std::unordered_map<std::string, std::vector<int>>> buckets_; // L hash maps
     std::vector<std::vector<float>> dataset_;
     std::vector<std::string> image_ids_;
     std::string hash(const std::vector<float>& point, int table_index) const;

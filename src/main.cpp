@@ -1,5 +1,6 @@
 #include "args.hpp"
 #include "loader.hpp"
+#include "imgutils/pipeline.hpp"
 #include "imgutils/search.hpp"
 #include <iostream>
 
@@ -14,24 +15,30 @@ int main(int argc, char* argv[]) {
         cout << "Dataset: " << args.hp << endl;
         cout << "Distractors: " << args.mir << " (Size: " << args.D << ")" << endl;
         cout << "Vocabulary Size: " << args.vocab << endl;
-
-        // Output chosen method
-        if (args.method == Method::Exact) {
-            cout << "Search Method: Exact Search" << endl;
-        } else if (args.method == Method::LSH) {
-            cout << "Search Method: LSH (L=" << args.L << ", k=" << args.k << ", w=" << args.w << ")" << endl;
-        } else {
-            cout << "Search Method: Other (Hypercube/IVF)" << endl;
-        }
+        cout << "Search Method Enum: " << static_cast<int>(args.method) << endl;
         cout << "--------------------------------" << endl;
 
-        // TODO: The Main Pipeline
-        // 2. Load Datasets using `load_split` and `load_dataset`
-        // 3. Extract SIFT for Training Set
-        // 4. Run K-Means to build the Vocabulary
-        // 5. Compute BoVW histograms for all images (Database + Queries)
-        // 6. Initialize the appropriate SearchMethod based on `args.method`
-        // 7. Loop through queries, call `search()`, and evaluate results!
+        // TODO: Tie the Pipeline Together!
+
+        // 2. Load Datasets using `load_split` and `load_dataset` (from loader.hpp/split.hpp)
+
+        // 3. Build Vocabulary
+        // vector<vector<float>> vocab = build_vocabulary(train_images, args.vocab, args.S);
+
+        // 4. Compute BoVW
+        // vector<vector<float>> database_bovw = compute_dataset_bovw(database_images, vocab, 500);
+        // vector<vector<float>> query_bovw = compute_dataset_bovw(query_images, vocab, 10000); // queries shouldn't be capped!
+
+        // 5. Initialize Search Method
+        // SearchMethod* searcher = initialize_search_method(args);
+
+        // 6. Build the Index (LSH, Hypercube, IVF, or Exact)
+        // searcher->build_index(database_bovw, database_image_ids);
+
+        // 7. Evaluate
+        // evaluate_queries(searcher, query_images, query_bovw, ground_truth);
+
+        // delete searcher;
 
     } catch (const exception& e) {
         cerr << "Error: " << e.what() << endl;

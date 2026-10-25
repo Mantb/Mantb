@@ -20,6 +20,7 @@ include_directories(
 
 # Source files
 set(SOURCES
+    src/pipeline.cpp
     src/main.cpp
     src/imgutils.cpp
     src/args.cpp
