@@ -20,12 +20,14 @@ include_directories(
 
 # Source files
 set(SOURCES
+    src/pipeline.cpp
     src/main.cpp
     src/imgutils.cpp
     src/args.cpp
     src/split.cpp
     src/loader.cpp
     src/kmeans.cpp
+    src/search.cpp
     src/lsh.cpp
     src/hypercube.cpp
     src/ivf.cpp
