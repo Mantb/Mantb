@@ -64,8 +64,8 @@ void evaluate_queries(SearchMethod* searcher, const vector<Image>& query_images,
     // 5. Print the average Recall (total_recall / num_queries) and Mean Average Precision (mAP = total_ap / num_queries).
     for (int i = 0; i < num_queries; ++i) {
         vector<SearchResult> results = searcher->search(query_bovw[i], 10);
-        total_recall += calculate_recall(results, ground_truth[i]);
-        total_ap += calculate_ap(results, ground_truth[i]);
+        total_recall += calculate_recall(results, ground_truth[i], 10);
+        total_ap += calculate_ap(results, ground_truth[i], 10);
     }
 
     if (num_queries > 0) {
