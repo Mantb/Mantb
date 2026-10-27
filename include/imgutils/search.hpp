@@ -70,6 +70,40 @@ public:
     std::vector<SearchResult> search(const std::vector<float>& query, int top_k = 10) override;
 };
 
+//------------IVFPQ Implementation ----------
+
+class IVFPQSearch : public SearchMethod {
+private:
+    int kclusters_; // Number of coarse clusters (k-means centroids)
+    int nprobe_;    // Number of closest clusters to scan at query time
+    int M_;         // Number of segments for Product Quantization
+    int nbits_;     // Number of bits per segment (2^nbits_ sub-centroids per segment)
+
+    std::vector<std::vector<float>> coarse_centroids_;
+    std::vector<std::vector<int>> inverted_lists_; // inverted_lists_[c] = indices of points in cluster c
+
+    // PQ structures
+    int d_sub_; // Dimension of each segment (D / M)
+    int k_sub_; // Number of sub-centroids per segment (2^nbits_)
+
+    // sub_centroids_[m][k] gives the sub-centroid k for segment m
+    std::vector<std::vector<std::vector<float>>> sub_centroids_;
+
+    // pq_codes_[i][m] gives the sub-centroid index for segment m of the i-th database vector
+    std::vector<std::vector<int>> pq_codes_;
+
+    std::vector<std::vector<float>> dataset_;
+    std::vector<std::string> image_ids_;
+
+public:
+    IVFPQSearch(int kclusters, int nprobe, int M, int nbits)
+        : kclusters_(kclusters), nprobe_(nprobe), M_(M), nbits_(nbits) {
+        k_sub_ = 1 << nbits_; // 2^nbits_
+    }
+    void build_index(const std::vector<std::vector<float>>& dataset, const std::vector<std::string>& image_ids) override;
+    std::vector<SearchResult> search(const std::vector<float>& query, int top_k = 10) override;
+};
+
 //------------Hypercube Implementation ----------
 
 class HypercubeSearch : public SearchMethod {

@@ -15,4 +15,4 @@ std::vector<std::vector<float>> compute_dataset_bovw(const std::vector<Image>& i
 SearchMethod* initialize_search_method(const Args& args);
 
 // Evaluate all queries against the search index and compute average Recall and mAP
-void evaluate_queries(SearchMethod* searcher, const std::vector<Image>& query_images, const std::vector<std::vector<float>>& query_bovw, const std::vector<std::vector<std::string>>& ground_truth);
+void evaluate_queries(SearchMethod* searcher, const std::vector<Image>& query_images, const std::vector<std::vector<float>>& query_bovw, const std::vector<std::vector<std::string>>& ground_truth, const std::string& output_file = "");
