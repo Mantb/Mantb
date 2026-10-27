@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 
         // 7. Evaluate
         cout << "Evaluating Queries..." << endl;
-        evaluate_queries(searcher, query_images, query_bovw, ground_truth);
+        evaluate_queries(searcher, query_images, query_bovw, ground_truth, args.output);
 
         delete searcher;
 
