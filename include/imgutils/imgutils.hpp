@@ -2,6 +2,8 @@
 #define imgutils_hpp
 #include <vector>
 #include <string>
+#include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp>
 
 // Helper function to calculate squared Euclidean distance between two vectors.
 float squared_distance(const std::vector<float>& a, const std::vector<float>& b);
