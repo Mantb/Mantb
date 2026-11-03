@@ -2,26 +2,27 @@
 
 ## 1. High-Level Architecture Overview
 
-This project implements an end-to-end Image Search system based on the Bag of Visual Words (BoVW) model, scaled with advanced Approximate Nearest Neighbor (ANN) algorithms.
+Welcome! This project is an Image Search system. Imagine you have a massive photo album, and you want to find all pictures that look similar to a new photo you just took. To do this quickly, our system doesn't look at the whole picture at once; instead, it looks for special "features" or patterns.
 
-The overall lifecycle of the application follows a robust pipeline:
-1. **Feature Extraction:** SIFT descriptors are extracted from images using OpenCV.
-2. **Vocabulary Building:** A subset of these descriptors is clustered using Lloyd's K-Means algorithm to form a visual vocabulary (codebook).
-3. **Histogram Generation:** Images are converted into fixed-size dimensional vectors (histograms) by assigning their SIFT descriptors to the nearest visual words.
-4. **Indexing & Searching:** The database vectors are indexed into specialized data structures, which are subsequently queried using specific search methodologies to retrieve similar images.
+Here is the step-by-step journey of how our system works:
+
+1. **Finding Features (Feature Extraction):** First, we use a tool called OpenCV to find tiny, interesting details in every image (like corners or edges). These are called SIFT descriptors.
+2. **Creating a Visual Dictionary (Vocabulary Building):** We take a bunch of these tiny details from many images and group similar ones together using a grouping method called K-Means. This creates a "dictionary" of common visual patterns.
+3. **Building Histograms (Histogram Generation):** For each image, we count how many times each pattern from our dictionary appears. We turn this count into a list of numbers (a vector or histogram). Now, every image is just a list of numbers!
+4. **Storing and Searching (Indexing & Searching):** We store all these lists of numbers in a smart way so we can search through them quickly. When you want to search for a new image, we turn it into a list of numbers too, and find the closest matches in our database.
 
 ```mermaid
 graph TD
-    A[Raw Images] --> B[Extract SIFT Descriptors]
-    B --> C[K-Means Clustering]
-    C --> D[Visual Vocabulary / Codebook]
-    D --> E[Compute BoVW Histograms]
-    E --> F[Database Vectors]
-    E --> G[Query Vectors]
-    F --> H[Index Construction]
-    H --> I[Search Phase]
+    A[Raw Images] --> B[Find Image Features - SIFT]
+    B --> C[Group Features - K-Means]
+    C --> D[Create Visual Dictionary]
+    D --> E[Count Features for Each Image]
+    E --> F[Database of Image Number Lists]
+    E --> G[New Search Image Number List]
+    F --> H[Organize Database for Fast Search]
+    H --> I[Search for Closest Matches]
     G --> I
-    I --> J[Evaluate Recall & mAP]
+    I --> J[Check How Well the Search Worked]
 ```
 
 ## 2. Core Architectural & Logical Decisions
@@ -80,20 +81,20 @@ while (visited < probes_ && checked < M_ && mask < (1ULL << kproj_)) {
 ```
 
 #### Inverted File Index & Product Quantization (`IVFFlatSearch`, `IVFPQSearch`)
-- **Theory to C++:** Divides the dataset into Voronoi cells via coarse quantization (k-means) to drastically narrow down the exhaustive search space.
-- **Highlight - Memory and Inverted List Handling:**
-  Inverted lists are implemented efficiently using `std::vector<std::vector<int>> inverted_lists_`. The outer vector represents the coarse cluster ID, and the inner vector holds integer dataset indices. This structure ensures cache-friendly, contiguous memory access when sequentially scanning a cluster's points.
+These methods organize the database like a filing cabinet to make searching incredibly fast, even for huge datasets.
+**How IVFFlat works:** It uses K-Means to divide the whole database into big regions. When searching, it figures out which region the search image belongs to, and then *only* searches inside that specific region.
+**How IVFPQ works:** This makes IVFFlat even better by saving memory. Instead of saving the full, long list of numbers for every image, it breaks the list into smaller chunks and rounds them off to a tiny code (Product Quantization).
 
-  In `IVFPQSearch`, memory footprint is exponentially reduced. Instead of storing 128-float residuals for every indexed point, the residual is split into $M$ orthogonal segments. Each segment is quantized into a small 8-bit integer (PQ Code).
-
-  During the search phase, asymmetric distance computation (ADC) is utilized. A small distance table is computed *once* per query for the probed clusters. This allows the inner loop to calculate distances using simple, lightning-fast table lookups rather than floating-point math:
+**Code Highlight - Fast Table Lookups:**
+Because we squished the data into tiny codes, we can do something amazing during the search. Instead of doing complicated math to measure distances for every image, we create a small "cheat sheet" (distance table) for the search image *once*. Then, for every image in the region, we just look up the answer in our cheat sheet! This is lightning fast.
 
 ```cpp
-// Inner loop: Fast asymmetric distance computation via table lookup
+// Inner loop: Lightning-fast distance calculation using our "cheat sheet" table
 for (int i : inverted_lists_[c]) {
     float dist_sq = 0;
-    // Iterate over M segments and lookup precomputed distances using the PQ code
+    // Iterate over the small chunks of our data
     for (int m = 0; m < M_; ++m) {
+        // Look up the pre-calculated distance in the table instead of doing math!
         dist_sq += dist_table[m][pq_codes_[i][m]];
     }
     results.push_back({image_ids_[i], sqrt(dist_sq)});
