@@ -39,3 +39,15 @@ add_executable(image_search ${SOURCES})
 
 # Link libraries
 target_link_libraries(image_search ${OpenCV_LIBS} Eigen3::Eigen)
+
+# Tests
+add_executable(run_tests
+    tests/test_main.cpp
+    src/imgutils.cpp
+    src/kmeans.cpp
+    src/search.cpp
+    src/lsh.cpp
+    src/hypercube.cpp
+    src/ivf.cpp
+)
+target_link_libraries(run_tests ${OpenCV_LIBS} Eigen3::Eigen)

@@ -9,7 +9,17 @@ vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max
     vector<vector<float>> centroids(k);
 
     // Edge case: if k > number of points, just return the points
-    if (points.size() <= static_cast<size_t>(k)) {
+    if (points.size() < static_cast<size_t>(k)) {
+        vector<vector<float>> padded = points;
+        if(points.empty()) return padded;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, points.size() - 1);
+        while(padded.size() < static_cast<size_t>(k)) {
+            padded.push_back(points[dis(gen)]);
+        }
+        return padded;
+    } else if (points.size() == static_cast<size_t>(k)) {
         return points;
     }
 
@@ -51,12 +61,21 @@ vector<vector<float>> kmeans(const vector<vector<float>>& points, int k, int max
         // TODO: Phase 3: Maximization (Update Step)
         // Calculate the new means for each centroid.
         // You'll need temporary vectors to sum the dimensions and an array to count the items per cluster.
-        const static int sift_dim=k;
-        std::vector<std::vector<float>> sum_centroids(k);
-        std::vector<int> count_centroids(sift_dim, 0);
+        size_t dim = points[0].size();
+        std::vector<std::vector<float>> sum_centroids(k, std::vector<float>(dim, 0.0f));
+        std::vector<int> count_centroids(k, 0);
+
+        for (size_t i = 0; i < points.size(); ++i) {
+            int c = assignments[i];
+            count_centroids[c]++;
+            for (size_t d = 0; d < dim; ++d) {
+                sum_centroids[c][d] += points[i][d];
+            }
+        }
+
         for (int j = 0; j < k; ++j) {
             if (count_centroids[j] > 0) {
-                for (size_t d = 0; d < centroids[j].size(); ++d) {
+                for (size_t d = 0; d < dim; ++d) {
                     centroids[j][d] = sum_centroids[j][d] / count_centroids[j];
                 }
             } else {
