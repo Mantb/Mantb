@@ -55,7 +55,7 @@ graph TD
 The pipeline manages the orchestration of data flow. SIFT descriptors are extracted via OpenCV and pooled across the training set to construct the vocabulary. Crucially, query images are not artificially capped on feature extraction, ensuring maximum signal fidelity during retrieval.
 
 ```cpp
-// pipeline.cpp: Computing BoVW Histograms
+// src/pipeline.cpp (Line ~27): Computing BoVW Histograms
 vector<vector<float>> compute_dataset_bovw(const vector<Image>& images, const vector<vector<float>>& vocabulary, int max_features) {
     vector<vector<float>> bovw_dataset;
     for (const auto& image : images) {
@@ -76,7 +76,14 @@ vector<vector<float>> compute_dataset_bovw(const vector<Image>& images, const ve
 The C++ implementation utilizes standard `<random>` engines for uniform initializations. A critical edge case handled here is "empty clusters." If a centroid fails to capture any points during the assignment phase, its coordinate vector collapses, rendering it defunct. The implementation mitigates this by re-initializing degenerate centroids to random dataset coordinates drawn via `std::mt19937`.
 
 ```cpp
-// kmeans.cpp: Centroid Update & Degeneracy Handling
+// src/kmeans.cpp (Line ~37): Assignment Phase (Expectation)
+float dist = squared_distance(points[i], centroids[j]);
+if(dist < min_dist) {
+    min_dist = dist;
+    closest_centroid = j;
+}
+
+// src/kmeans.cpp (Line ~53): Centroid Update & Degeneracy Handling (Maximization)
 for (int j = 0; j < k; ++j) {
     if (count_centroids[j] > 0) {
         for (size_t d = 0; d < centroids[j].size(); ++d) {
@@ -97,11 +104,11 @@ for (int j = 0; j < k; ++j) {
 To optimize the inner loop of the exhaustive search, the expensive `std::sqrt` is delayed. Distances are computed and compared strictly in the squared $L_2$ domain (`squared_distance`). `std::sort` is leveraged to rank the distances.
 
 ```cpp
-// search.cpp: Exhaustive Brute-Force Search
+// src/search.cpp (Line ~22): Exhaustive Brute-Force Search
 vector<SearchResult> ExactSearch::search(const vector<float>& query, int top_k) {
     vector<SearchResult> results;
     for (size_t i = 0; i < dataset_.size(); ++i) {
-        // std::sqrt only executed after squared distance computation for minor overhead reduction
+        // std::sqrt only executed after squared distance computation for minor overhead reduction (Line 26)
         float distance = sqrt(squared_distance(query, dataset_[i]));
         results.push_back({image_ids_[i], distance});
     }
@@ -121,7 +128,7 @@ vector<SearchResult> ExactSearch::search(const vector<float>& query, int top_k) 
 Multiple hash tables ($L$) with $k$ amplified projections are constructed. The multidimensional scalar projections are serialized into a unique string key (`"h1_h2_h3_"`) for deterministic $O(1)$ lookups in a `std::unordered_map`.
 
 ```cpp
-// lsh.cpp: Hashing Mechanism
+// src/lsh.cpp (Line ~9): Hashing Mechanism
 string LSHSearch::hash(const vector<float>& point, int table_index) const {
     string combined_hash = "";
     for (int j = 0; j < k_; ++j) {
@@ -137,6 +144,12 @@ string LSHSearch::hash(const vector<float>& point, int table_index) const {
     }
     return combined_hash;
 }
+
+// src/lsh.cpp (Line ~68): O(1) Bucket Retrieval
+auto it = buckets_[l].find(h);
+if (it != buckets_[l].end()) {
+    candidate_indices.insert(it->second.begin(), it->second.end());
+}
 ```
 
 ### 2.5. Random Projection Hypercube (`hypercube.cpp`)
@@ -147,8 +160,9 @@ string LSHSearch::hash(const vector<float>& point, int table_index) const {
 The C++ implementation utilizes a `uint64_t` bitmask representation. To traverse the hypercube efficiently without enumerating $2^d$ vertices, the implementation employs **Gosper's Hack**, a bit-manipulation algorithm that generates lexicographically ordered permutations of bitmasks with exactly $N$ bits set in $O(1)$ time per mask.
 
 ```cpp
-// hypercube.cpp: Hamming Distance Exploration via Gosper's Hack
+// src/hypercube.cpp (Line ~61): Hamming Distance Exploration via Gosper's Hack
 for (int dist = 0; dist <= kproj_ && visited < probes_ && checked < M_; ++dist) {
+    // Generate initial bitmask with exactly 'dist' bits set
     uint64_t mask = (dist == 0) ? 0 : (1ULL << dist) - 1;
     while (visited < probes_ && checked < M_ && mask < (1ULL << kproj_)) {
         ++visited;
@@ -156,7 +170,7 @@ for (int dist = 0; dist <= kproj_ && visited < probes_ && checked < M_; ++dist) 
         // ... Retrieve candidates ...
 
         if (mask == 0) break;
-        // Gosper's Hack: Generate next bitmask permutation
+        // Gosper's Hack (Line 72): Generate next lexicographical bitmask permutation in O(1)
         uint64_t c = mask & -mask, r = mask + c;
         mask = (((r ^ mask) >> 2) / c) | r;
     }
@@ -173,7 +187,15 @@ for (int dist = 0; dist <= kproj_ && visited < probes_ && checked < M_; ++dist) 
 For IVFPQ, the C++ implementation capitalizes on Asymmetric Distance Computation (ADC). Instead of reconstructing the compressed vector for $L_2$ evaluation, a look-up table (`dist_table`) containing the squared distances between the query residual's subspaces and all sub-centroids is precomputed *once*. The inner loop executes only scalar additions of precomputed distances via array index lookups, entirely eliminating floating-point multiplications in the critical path.
 
 ```cpp
-// ivf.cpp: Asymmetric Distance Computation Inner Loop
+// src/ivf.cpp (Line ~166): Distance Table Precomputation
+for (int m = 0; m < M_; ++m) {
+    // segment initialized from query_residual
+    for (int k = 0; k < k_sub_; ++k) {
+        dist_table[m][k] = squared_distance(segment, sub_centroids_[m][k]);
+    }
+}
+
+// src/ivf.cpp (Line ~172): Asymmetric Distance Computation Inner Loop
 for (int i : inverted_lists_[c]) { // Iterate over cluster's points
     float dist_sq = 0;
     // Iterate over M orthogonal sub-spaces
