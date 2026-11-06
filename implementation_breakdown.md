@@ -1,138 +1,196 @@
-# Implementation Breakdown and Logic Guide
+# Advanced Implementation Breakdown and Logic Guide
 
 ## 1. High-Level Architecture Overview
 
-Welcome! This project is an Image Search system. Imagine you have a massive photo album, and you want to find all pictures that look similar to a new photo you just took. To do this quickly, our system doesn't look at the whole picture at once; instead, it looks for special "features" or patterns.
+This project implements a highly optimized, end-to-end Image Search pipeline based on the Bag of Visual Words (BoVW) paradigm, accelerated by state-of-the-art Approximate Nearest Neighbor (ANN) indexing structures.
 
-Here is the step-by-step journey of how our system works:
+The architecture strictly adheres to a modular Object-Oriented design, utilizing polymorphism to decouple the core search logic from the dataset evaluation pipeline.
 
-1. **Finding Features (Feature Extraction):** First, we use a tool called OpenCV to find tiny, interesting details in every image (like corners or edges). These are called SIFT descriptors.
-2. **Creating a Visual Dictionary (Vocabulary Building):** We take a bunch of these tiny details from many images and group similar ones together using a grouping method called K-Means. This creates a "dictionary" of common visual patterns.
-3. **Building Histograms (Histogram Generation):** For each image, we count how many times each pattern from our dictionary appears. We turn this count into a list of numbers (a vector or histogram). Now, every image is just a list of numbers!
-4. **Storing and Searching (Indexing & Searching):** We store all these lists of numbers in a smart way so we can search through them quickly. When you want to search for a new image, we turn it into a list of numbers too, and find the closest matches in our database.
+### Advanced System Flow
 
 ```mermaid
 graph TD
-    A[Raw Images] --> B[Find Image Features - SIFT]
-    B --> C[Group Features - K-Means]
-    C --> D[Create Visual Dictionary]
-    D --> E[Count Features for Each Image]
-    E --> F[Database of Image Number Lists]
-    E --> G[New Search Image Number List]
-    F --> H[Organize Database for Fast Search]
-    H --> I[Search for Closest Matches]
-    G --> I
-    I --> J[Check How Well the Search Worked]
+    subgraph Data Loading & Preprocessing
+        A[main.cpp: load_dataset] -->|Extract| B[imgutils.cpp: extract_sift_descriptors]
+        B --> C[OpenCV SIFT Engine]
+    end
+
+    subgraph Visual Vocabulary Generation
+        D[pipeline.cpp: build_vocabulary] --> E[kmeans.cpp: kmeans]
+        E -->|Lloyd's Algorithm| F[Visual Vocabulary / Centroids]
+    end
+    C --> D
+
+    subgraph Vectorization
+        C --> G[pipeline.cpp: compute_dataset_bovw]
+        F --> G
+        G -->|L2 Normalized Histograms| H[128-D Database/Query Vectors]
+    end
+
+    subgraph ANN Indexing & Retrieval
+        H --> I[search.cpp: SearchMethod Interface]
+        I -->|Polymorphic Dispatch| J{Concrete Search Implementations}
+        J -->|lsh.cpp| K[LSHSearch::build_index / search]
+        J -->|hypercube.cpp| L[HypercubeSearch::build_index / search]
+        J -->|ivf.cpp| M[IVFFlatSearch / IVFPQSearch]
+        J -->|search.cpp| N[ExactSearch]
+    end
+
+    subgraph Evaluation
+        K --> O[pipeline.cpp: evaluate_queries]
+        L --> O
+        M --> O
+        N --> O
+        O --> P[calculate_recall / calculate_ap]
+    end
 ```
 
-## 2. Core Architectural & Logical Decisions
+## 2. In-Depth Component Analysis & Implementation Details
 
-### Using Object-Oriented Design (Polymorphism)
-We wanted to try several different ways to search for images. To keep the code neat and organized, we used an Object-Oriented Programming (OOP) trick. We created a blueprint called `SearchMethod`. Every specific search strategy (like Exact Search or LSH Search) follows this blueprint. This means the rest of our program doesn't need to care *how* the search is done, it just says "build the index" and "search!" This keeps our code very clean.
+### 2.1. Feature Pipeline (`pipeline.cpp`)
 
-### Speed Trick: Avoiding Slow Math
-When finding the "closest" image, we measure the distance between their lists of numbers using a math formula called Euclidean distance. This formula normally requires calculating a square root, which is surprisingly slow for a computer to do millions of times.
-To speed things up, we compare the *squared* distances instead. We only do the slow square root math right at the very end when we show the final results to the user.
+**Theory:** The Bag of Visual Words model maps varying numbers of local image features (e.g., SIFT descriptors) into a fixed-dimensional global representation. By extracting invariant scale and rotation features, clustering them into a discrete vocabulary $K$, and generating normalized frequency histograms, we project images into a metric space suitable for $L_2$ distance-based retrieval.
 
-## 3. In-Depth Breakdown of Major Components
-
-### 3.1. Creating the Groups (`kmeans.cpp`, `pipeline.cpp`)
-- **`kmeans`:** This function is a grouping algorithm. Imagine scattering a bunch of dots on a table and trying to find the center of where the dots clump together. This algorithm guesses the centers, assigns dots to the closest center, and then adjusts the center until it perfectly matches the clumps. If a center accidentally gets no dots, we give it a new random starting point so it doesn't break.
-- **`compute_dataset_bovw`:** This takes raw images and translates them into our "lists of numbers" (histograms) by comparing the image's features to the visual dictionary we just made.
-
-### 3.2. Search Algorithms
-
-```mermaid
-classDiagram
-    class SearchMethod {
-        <<interface>>
-        +build_index(dataset, image_ids)
-        +search(query, top_k) vector~SearchResult~
-    }
-    SearchMethod <|-- ExactSearch
-    SearchMethod <|-- LSHSearch
-    SearchMethod <|-- HypercubeSearch
-    SearchMethod <|-- IVFFlatSearch
-    SearchMethod <|-- IVFPQSearch
-```
-
-#### Exact Search (`ExactSearch`)
-This is the simplest but slowest method.
-**How it works:** It takes your search image and compares it to *every single image* in the database, one by one. It measures the distance to each one, sorts them all from closest to furthest, and gives you the top matches. It's perfectly accurate but takes a long time if you have millions of images.
-
-#### Locality Sensitive Hashing (`LSHSearch`)
-This method speeds things up by putting similar images into the same "buckets".
-**How it works:** Imagine drawing random lines through all your data points. Depending on which side of the line a point falls, it gets a score. We combine these scores into a label (like `"4_-2_5_"`). Images that are similar will likely get the same label and end up in the same bucket. When searching, we only look inside the buckets that match our search image's label, ignoring the rest of the database!
-**C++ Detail:** We use `std::unordered_map` to build these buckets because it lets the computer instantly jump to the right bucket without searching.
-
-#### Random Projection Hypercube (`HypercubeSearch`)
-This is a very advanced way to organize data into a geometric shape called a hypercube.
-**How it works:** It turns each image's list of numbers into a simple binary code (like `10110`). Think of this code as a specific corner on a multi-dimensional cube. When searching, we look at the corner for our search image. If we don't find enough matches there, we look at the neighboring corners (corners where only one bit is different, like `10111`).
-**Code Highlight - Gosper's Hack:** To find these neighboring corners efficiently, we need to flip bits in a very specific order based on how many bits are different (Hamming distance). Instead of checking every possible corner, our code uses a famous, super-fast math trick called **Gosper's Hack**. It instantly generates the exact bit patterns we need to check next.
+**Implementation Details:**
+The pipeline manages the orchestration of data flow. SIFT descriptors are extracted via OpenCV and pooled across the training set to construct the vocabulary. Crucially, query images are not artificially capped on feature extraction, ensuring maximum signal fidelity during retrieval.
 
 ```cpp
-// Generating bit patterns to check neighboring corners (Gosper's hack)
-uint64_t mask = (dist == 0) ? 0 : (1ULL << dist) - 1;
-while (visited < probes_ && checked < M_ && mask < (1ULL << kproj_)) {
-    // ... Check the neighboring corner ...
-
-    // Gosper's Hack: Generate the next bit pattern instantly
-    if (mask == 0) break;
-    uint64_t c = mask & -mask;
-    uint64_t r = mask + c;
-    mask = (((r ^ mask) >> 2) / c) | r;
+// pipeline.cpp: Computing BoVW Histograms
+vector<vector<float>> compute_dataset_bovw(const vector<Image>& images, const vector<vector<float>>& vocabulary, int max_features) {
+    vector<vector<float>> bovw_dataset;
+    for (const auto& image : images) {
+        // High feature cap for queries to prevent signal loss
+        vector<vector<float>> descriptors = extract_sift_descriptors(image.path, max_features);
+        vector<float> histogram = compute_bovw_histogram(descriptors, vocabulary);
+        bovw_dataset.push_back(histogram);
+    }
+    return bovw_dataset;
 }
 ```
 
-#### Inverted File Index & Product Quantization (`IVFFlatSearch`, `IVFPQSearch`)
-These methods organize the database like a filing cabinet to make searching incredibly fast, even for huge datasets.
-**How IVFFlat works:** It uses K-Means to divide the whole database into big regions. When searching, it figures out which region the search image belongs to, and then *only* searches inside that specific region.
-**How IVFPQ works:** This makes IVFFlat even better by saving memory. Instead of saving the full, long list of numbers for every image, it breaks the list into smaller chunks and rounds them off to a tiny code (Product Quantization).
+### 2.2. Vocabulary Clustering (`kmeans.cpp`)
 
-**Code Highlight - Fast Table Lookups:**
-Because we squished the data into tiny codes, we can do something amazing during the search. Instead of doing complicated math to measure distances for every image, we create a small "cheat sheet" (distance table) for the search image *once*. Then, for every image in the region, we just look up the answer in our cheat sheet! This is lightning fast.
+**Theory:** Lloyd's algorithm for K-Means aims to partition $N$ observations into $K$ sets by minimizing the within-cluster sum of squares (WCSS). It is an iterative expectation-maximization (EM) process. The algorithm assigns points to the nearest centroid (Expectation) and updates centroids to the mean of assigned points (Maximization) until convergence.
+
+**Implementation Details:**
+The C++ implementation utilizes standard `<random>` engines for uniform initializations. A critical edge case handled here is "empty clusters." If a centroid fails to capture any points during the assignment phase, its coordinate vector collapses, rendering it defunct. The implementation mitigates this by re-initializing degenerate centroids to random dataset coordinates drawn via `std::mt19937`.
 
 ```cpp
-// Inner loop: Lightning-fast distance calculation using our "cheat sheet" table
-for (int i : inverted_lists_[c]) {
+// kmeans.cpp: Centroid Update & Degeneracy Handling
+for (int j = 0; j < k; ++j) {
+    if (count_centroids[j] > 0) {
+        for (size_t d = 0; d < centroids[j].size(); ++d) {
+            centroids[j][d] = sum_centroids[j][d] / count_centroids[j];
+        }
+    } else {
+        // Re-initialize empty clusters to a random point to prevent vocabulary collapse
+        centroids[j] = points[dis(gen)];
+    }
+}
+```
+
+### 2.3. Exact Search & Evaluation Metrics (`search.cpp`)
+
+**Theory:** Exact search acts as the ground-truth baseline, executing an exhaustive nearest neighbor search in $O(N \cdot D)$ time complexity, where $N$ is the dataset size and $D$ is the dimensionality. Retrieval performance is quantified using Recall@K (fraction of relevant images retrieved in top K) and Average Precision (AP), which is rank-sensitive.
+
+**Implementation Details:**
+To optimize the inner loop of the exhaustive search, the expensive `std::sqrt` is delayed. Distances are computed and compared strictly in the squared $L_2$ domain (`squared_distance`). `std::sort` is leveraged to rank the distances.
+
+```cpp
+// search.cpp: Exhaustive Brute-Force Search
+vector<SearchResult> ExactSearch::search(const vector<float>& query, int top_k) {
+    vector<SearchResult> results;
+    for (size_t i = 0; i < dataset_.size(); ++i) {
+        // std::sqrt only executed after squared distance computation for minor overhead reduction
+        float distance = sqrt(squared_distance(query, dataset_[i]));
+        results.push_back({image_ids_[i], distance});
+    }
+    sort(results.begin(), results.end(), [](const SearchResult& a, const SearchResult& b) {
+        return a.distance < b.distance;
+    });
+    results.resize(min(top_k, static_cast<int>(results.size())));
+    return results;
+}
+```
+
+### 2.4. Locality Sensitive Hashing (`lsh.cpp`)
+
+**Theory:** Locality Sensitive Hashing (LSH) projects data into lower-dimensional sub-spaces using randomized hash functions designed such that vectors in close proximity have a high probability of colliding into the same hash bucket. The hash functions use random Gaussian projections and uniform scalar shifts: $h_{\mathbf{v}, t}(\mathbf{x}) = \lfloor \frac{\mathbf{v} \cdot \mathbf{x} + t}{w} \rfloor$.
+
+**Implementation Details:**
+Multiple hash tables ($L$) with $k$ amplified projections are constructed. The multidimensional scalar projections are serialized into a unique string key (`"h1_h2_h3_"`) for deterministic $O(1)$ lookups in a `std::unordered_map`.
+
+```cpp
+// lsh.cpp: Hashing Mechanism
+string LSHSearch::hash(const vector<float>& point, int table_index) const {
+    string combined_hash = "";
+    for (int j = 0; j < k_; ++j) {
+        float dot_product = 0.0f;
+        const auto& proj = hash_tables_[table_index][j];
+        for (size_t d = 0; d < point.size(); ++d) {
+            dot_product += point[d] * proj[d];
+        }
+        float t = proj.back();
+        // Discretization scalar
+        int h = static_cast<int>(floor((dot_product + t) / w_));
+        combined_hash += to_string(h) + "_";
+    }
+    return combined_hash;
+}
+```
+
+### 2.5. Random Projection Hypercube (`hypercube.cpp`)
+
+**Theory:** This algorithm embeds $D$-dimensional real-valued vectors into the vertices of a $d$-dimensional boolean hypercube (where $d \in \{1, ..., 63\}$). Random hyperplanes partition the space; points on one side receive a '1' bit, the other a '0'. Querying involves mapping the query to a vertex and executing a breadth-first exploration of vertices in increasing Hamming distance.
+
+**Implementation Details:**
+The C++ implementation utilizes a `uint64_t` bitmask representation. To traverse the hypercube efficiently without enumerating $2^d$ vertices, the implementation employs **Gosper's Hack**, a bit-manipulation algorithm that generates lexicographically ordered permutations of bitmasks with exactly $N$ bits set in $O(1)$ time per mask.
+
+```cpp
+// hypercube.cpp: Hamming Distance Exploration via Gosper's Hack
+for (int dist = 0; dist <= kproj_ && visited < probes_ && checked < M_; ++dist) {
+    uint64_t mask = (dist == 0) ? 0 : (1ULL << dist) - 1;
+    while (visited < probes_ && checked < M_ && mask < (1ULL << kproj_)) {
+        ++visited;
+        auto it = buckets_.find(q ^ mask); // XOR to probe neighboring vertex
+        // ... Retrieve candidates ...
+
+        if (mask == 0) break;
+        // Gosper's Hack: Generate next bitmask permutation
+        uint64_t c = mask & -mask, r = mask + c;
+        mask = (((r ^ mask) >> 2) / c) | r;
+    }
+}
+```
+
+### 2.6. Inverted File Index & Product Quantization (`ivf.cpp`)
+
+**Theory (IVFFlat):** The Inverted File Index (IVF) utilizes coarse quantization to partition the dataset into Voronoi cells. During search, the query vector is assigned to the nearest $N_{probe}$ centroids, and only the subsets (inverted lists) associated with those centroids are scanned exhaustively, achieving sub-linear time retrieval.
+
+**Theory (IVFPQ):** Product Quantization (PQ) is a lossy compression technique applied on top of IVF to minimize memory bandwidth bottlenecks. The high-dimensional residual vector $\mathbf{r} = \mathbf{x} - \mathbf{q}_c(\mathbf{x})$ is split into $M$ orthogonal subspaces. Each subspace is independently quantized into a sub-codebook of size $k^*$. A vector is represented simply by $M$ integer indices.
+
+**Implementation Details:**
+For IVFPQ, the C++ implementation capitalizes on Asymmetric Distance Computation (ADC). Instead of reconstructing the compressed vector for $L_2$ evaluation, a look-up table (`dist_table`) containing the squared distances between the query residual's subspaces and all sub-centroids is precomputed *once*. The inner loop executes only scalar additions of precomputed distances via array index lookups, entirely eliminating floating-point multiplications in the critical path.
+
+```cpp
+// ivf.cpp: Asymmetric Distance Computation Inner Loop
+for (int i : inverted_lists_[c]) { // Iterate over cluster's points
     float dist_sq = 0;
-    // Iterate over the small chunks of our data
+    // Iterate over M orthogonal sub-spaces
     for (int m = 0; m < M_; ++m) {
-        // Look up the pre-calculated distance in the table instead of doing math!
+        // O(1) Cache-friendly lookup using the 8-bit PQ code
         dist_sq += dist_table[m][pq_codes_[i][m]];
     }
     results.push_back({image_ids_[i], sqrt(dist_sq)});
 }
 ```
 
-## 4. Oral Exam Preparation Guide
+## 3. Advanced Oral Exam Preparation & Critical Analysis
 
-To help you prepare for your oral exam, here are some likely questions your tutor might ask based on the `.cpp` files, along with beginner-friendly answers.
+### Architecture & Conceptual Design
+**Q: Explain the exact mechanism by which IVFPQ achieves a lower computational bound than IVFFlat during the search phase.**
+**A:** IVFFlat requires computing the $L_2$ norm across all 128 dimensions for every candidate vector residing in the probed inverted lists, resulting in 128 floating-point multiplications per comparison. Conversely, IVFPQ leverages Asymmetric Distance Computation (ADC). It computes a $M \times k_{sub}$ distance table *once* per probed coarse centroid. During the inner loop traversal, evaluating the distance to an indexed vector requires exactly $M$ scalar additions (table lookups) and zero floating-point multiplications, reducing the computational complexity of the inner loop from $O(D)$ to $O(M)$, while simultaneously reducing the cache-miss penalty due to the memory compression ratio of $\frac{D \cdot \text{sizeof(float)}}{M \cdot \text{sizeof(int8\_t)}}$.
 
-### Questions by File
-
-#### `kmeans.cpp`
-**Q: How does your K-Means algorithm deal with "empty" clusters?**
-**A:** Sometimes, a center (centroid) might not have any dots (data points) assigned to it. If we leave it empty, it becomes useless. In our code, we check if a cluster is empty. If it is, we randomly pick a new dot from the dataset and make *that* the new center to keep it useful.
-
-#### `hypercube.cpp`
-**Q: What is a Hypercube in the context of this assignment, and how do you search it?**
-**A:** A Hypercube is a way to organize our images into a binary shape. Imagine turning our list of numbers into a simple binary code like `1010`. You can think of `1010` as an address or a "corner" on a multi-dimensional cube. When we search, we turn our search image into a binary code too. If we don't find enough matches at that exact corner, we start checking the closest neighboring corners. To do this super fast, our code uses a trick called **Gosper's Hack**, which instantly generates the addresses of the neighboring corners without us having to check every possible combination manually.
-
-#### `ivf.cpp` (IVFFlat)
-**Q: What is IVFFlat, and how does it speed up searching compared to Exact Search?**
-**A:** IVFFlat stands for "Inverted File Flat". Exact Search is slow because it checks *every single image* in the database. IVFFlat fixes this by acting like a filing cabinet. First, it uses K-Means to divide the database into different "folders" (regions). When we want to search, we first figure out which folder our search image belongs in, and then we *only* search the images inside that one folder. This skips looking at the majority of the database!
-
-#### `ivf.cpp` (IVFPQ) - Advanced Comparison
-**Q: What is the main difference between IVFFlat and IVFPQ?**
-**A:** While IVFFlat puts images into folders to speed up the search, it still has to store the full, long list of numbers for every single image, which takes up a lot of computer memory.
-IVFPQ (Product Quantization) is an upgrade. It takes that long list of numbers and chops it into smaller chunks, replacing each chunk with a tiny, short code.
-So, the difference is **Memory and Speed**. IVFFlat stores the full original data. IVFPQ stores compressed, tiny codes. Because the data is so small in IVFPQ, we can use a pre-calculated "cheat sheet" (distance table) during the search to look up answers instantly, making it even faster and much more memory-efficient than IVFFlat.
-
-#### `search.cpp` (Critical Thinking)
-**Q: Imagine you have three images: Image 1 is just a keyboard on a white background. Image 2 is a keyboard on a messy desk. Image 3 is just the messy desk. How does our model (Bag of Visual Words with SIFT) handle these? Which keyboard image is "better" for our model?**
-**A:** Our model works by finding tiny "features" (like corners of the keys on the keyboard).
-Image 1 (just the keyboard) is the best. The model will extract features *only* from the keyboard, so its "list of numbers" will perfectly represent what a keyboard looks like.
-Image 2 (keyboard on a messy desk) is trickier. The model will extract features from the keyboard, but *also* from the messy desk (background noise). Its final "list of numbers" will be a confusing mix of keyboard parts and desk parts.
-Image 3 (just the desk) will only have desk features.
-If we use Image 1 to search, it will easily find other pictures of keyboards because there is no distracting background noise confusing the search!
+### Computer Vision Theory (Critical Thinking)
+**Q: Consider an evaluation querying dataset containing three variations of an image: 1) A keyboard isolated on a white background, 2) A keyboard situated on a highly cluttered desk, 3) The cluttered desk without the keyboard. When evaluating retrieval performance (mAP) utilizing the BoVW + SIFT model, which variation provides the most robust query signal and why?**
+**A:** Variation 1 provides the superior query signal. SIFT (Scale-Invariant Feature Transform) detects robust local extrema in the scale-space difference of Gaussians. In Variation 2, a significant proportion of the extracted SIFT keypoints will originate from the high-frequency textural variance of the cluttered desk (the background noise). When quantized and pooled into a normalized BoVW histogram, the frequency bins representing the core keyboard features are diluted by the background noise bins. Variation 1 isolates the object features, ensuring the resultant vector maintains a high signal-to-noise ratio in the feature space, leading to a mathematically closer cosine/Euclidean alignment with isolated keyboard images in the dataset manifold.
